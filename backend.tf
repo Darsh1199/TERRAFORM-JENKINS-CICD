@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket = "mrcloudbook-cicd-bucket"
+    bucket = "CICD-bucket"
     key    = "my-terraform-environment/main"
     region = "us-east-1"
 
