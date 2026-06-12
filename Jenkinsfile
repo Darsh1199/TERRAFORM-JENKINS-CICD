@@ -1,64 +1,92 @@
-pipeline{
+pipeline {
     agent any
-    tools{
+
+    tools {
         jdk 'jdk17'
         terraform 'terraform'
     }
-    stages{
-        stage('clean Workspace'){
-            steps{
+
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+
+    stages {
+
+        stage('Clean Workspace') {
+            steps {
                 cleanWs()
             }
         }
-        stage('checkout from Git'){
-            steps{
-                git branch: 'main', url: 'https://github.com/Aj7Ay/TERRAFORM-JENKINS-CICD.git'
-            }
-        }
-        stage('Terraform version'){
-             steps{
-                 sh 'terraform --version'
-                }
-        }
-        stage("Sonarqube Analysis "){
-            steps{
-                withSonarQubeEnv('sonar-server') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Terraform \
-                    -Dsonar.projectKey=Terraform '''
-                }
-            }
-        }
-        stage("quality gate"){
-           steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
-                }
-            } 
-        }
-        stage('TRIVY FS SCAN') {
+
+        stage('Checkout Code') {
             steps {
-                sh "trivy fs . > trivyfs.txt"
+                git branch: 'main',
+                url: 'https://github.com/Aj7Ay/TERRAFORM-JENKINS-CICD.git'
             }
         }
-        stage('Excutable permission to userdata'){
-            steps{
-                sh 'chmod 777 website.sh'
+
+        stage('Terraform Version Check') {
+            steps {
+                sh 'terraform --version'
             }
         }
-        stage('Terraform init'){
-            steps{
-                sh 'terraform init'
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh '''
+                        $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectKey=Terraform \
+                        -Dsonar.projectName=Terraform
+                    '''
+                }
             }
         }
-        stage('Terraform plan'){
-            steps{
+
+        stage('Quality Gate') {
+            steps {
+                script {
+                    timeout(time: 2, unit: 'MINUTES') {
+                        waitForQualityGate abortPipeline: true
+                    }
+                }
+            }
+        }
+
+        stage('Trivy FS Scan') {
+            steps {
+                sh 'trivy fs . -o trivyfs.txt'
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                sh 'terraform init -reconfigure'
+            }
+        }
+
+        stage('Terraform Validate') {
+            steps {
+                sh 'terraform validate'
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
                 sh 'terraform plan'
             }
         }
-        stage('Terraform apply'){
-            steps{
-                sh 'terraform ${action} --auto approve'
+
+        stage('Terraform Apply/Destroy') {
+            steps {
+                sh 'terraform ${action} -auto-approve'
             }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'trivyfs.txt', allowEmptyArchive: true
         }
     }
 }
