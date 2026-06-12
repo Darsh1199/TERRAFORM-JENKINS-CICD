@@ -21,7 +21,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/Aj7Ay/TERRAFORM-JENKINS-CICD.git'
+                url: 'https://github.com/Darsh1199/TERRAFORM-JENKINS-CICD.git'
             }
         }
 
