@@ -5,7 +5,7 @@ terraform {
     region = "us-east-1"
 
     endpoints = {
-      s3 = "http://localhost:9001"
+      s3 = "http://localhost:9000"
     }
 
     skip_credentials_validation = true
